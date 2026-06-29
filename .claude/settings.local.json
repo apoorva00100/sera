@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git init *)",
+      "Bash(git remote *)",
+      "Bash(bun --version)",
+      "Bash(bun install *)",
+      "PowerShell($b = Get-Command bun -ErrorAction SilentlyContinue; if \\($b\\) { $b.Source; bun --version } else { \"bun not found on PATH\" })",
+      "PowerShell($ProgressPreference='SilentlyContinue'; irm bun.sh/install.ps1 | iex)",
+      "PowerShell(node --version)",
+      "PowerShell(npm --version)",
+      "PowerShell(npm install 2>&1)",
+      "PowerShell(npm run build 2>&1)",
+      "PowerShell($p = Start-Process npm -ArgumentList 'run','dev','--workspace','@ape/api' -PassThru -WindowStyle Hidden -RedirectStandardOutput \"$env:TEMP\\\\ape-api.log\" -RedirectStandardError \"$env:TEMP\\\\ape-api.err\"; Start-Sleep -Seconds 6; try { $r = Invoke-RestMethod http://localhost:3001/ ; \"RESPONSE: $\\($r | ConvertTo-Json -Compress\\)\" } catch { \"REQUEST FAILED: $_\" } finally { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue })",
+      "Bash(npm run *)",
+      "Bash(curl -s http://localhost:3001/)",
+      "Read(//tmp/**)",
+      "Bash(kill %1)"
+    ]
+  }
+}
