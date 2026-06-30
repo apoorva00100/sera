@@ -1,6 +1,7 @@
 import { readFile, writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { homedir } from "os";
+import { eq } from "drizzle-orm";
 import { orm } from "../db/client";
 import { userPreferences } from "../db/schema";
 
@@ -44,4 +45,11 @@ export async function writePreference(key: string, value: string): Promise<void>
       set: { value, confidence, updatedAt: Date.now() },
     })
     .run();
+}
+
+export async function deletePreference(key: string): Promise<void> {
+  const prefs = await readPrefs();
+  delete prefs[key];
+  await writeFile(PREFS_PATH, JSON.stringify(prefs, null, 2), "utf8");
+  orm.delete(userPreferences).where(eq(userPreferences.key, key)).run();
 }
