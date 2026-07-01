@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { ulid } from "ulid";
 import type { SessionEvent } from "@ape/types";
 import { orm } from "../db/client";
@@ -173,18 +173,23 @@ export async function* resumeLoop(
   // Re-load context from the context layer (not stored in checkpoint to avoid stale data)
   const context = await loadContext(session.projectId ?? undefined);
 
-  // Resolve the gate
+  // Resolve the gate (idempotent — POST handler may have already set these)
   orm
     .update(gateDecisions)
     .set({ chosen: choice, resolvedAt: Date.now() })
     .where(eq(gateDecisions.id, gateId))
     .run();
 
-  orm
+  // Atomic guard: only proceed if session is still in gating state.
+  // If a concurrent handler (old ESS whose client reconnected) already flipped
+  // the status to "running", bail out here to avoid double-execution.
+  const { changes } = orm
     .update(sessions)
     .set({ status: "running", updatedAt: Date.now() })
-    .where(eq(sessions.id, sessionId))
+    .where(and(eq(sessions.id, sessionId), eq(sessions.status, "gating")))
     .run();
+
+  if (changes === 0) return;
 
   yield { type: "status", status: "running" };
 

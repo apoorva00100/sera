@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
-import { eq, desc, and, isNull } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { ulid } from "ulid";
 import type { SSEStreamingApi } from "hono/streaming";
 import type { SessionEvent } from "@ape/types";
@@ -56,9 +56,12 @@ async function handleGate(
 }
 
 // ── Routes ────────────────────────────────────────────────────────────────────
+// Chained (not separate statements) so Hono's RPC type inference picks up
+// every route on the exported app — see AppType in src/index.ts.
 
-// POST /api/sessions
-app.post("/", async (c) => {
+const routes = app
+  // POST /api/sessions
+  .post("/", async (c) => {
   const body = await c.req.json<{ task?: string; projectId?: string }>();
   if (!body.task?.trim()) {
     return c.json({ error: "task is required" }, 400);
@@ -103,21 +106,21 @@ app.post("/", async (c) => {
   })();
 
   return c.json({ sessionId }, 201);
-});
+  })
 
-// GET /api/sessions
-app.get("/", (c) => {
-  const rows = orm
-    .select()
-    .from(sessions)
-    .orderBy(desc(sessions.createdAt))
-    .limit(20)
-    .all();
-  return c.json(rows);
-});
+  // GET /api/sessions
+  .get("/", (c) => {
+    const rows = orm
+      .select()
+      .from(sessions)
+      .orderBy(desc(sessions.createdAt))
+      .limit(20)
+      .all();
+    return c.json(rows);
+  })
 
-// GET /api/sessions/:id
-app.get("/:id", (c) => {
+  // GET /api/sessions/:id
+  .get("/:id", (c) => {
   const id = c.req.param("id");
   const [session] = orm
     .select()
@@ -138,10 +141,10 @@ app.get("/:id", (c) => {
     .all();
 
   return c.json({ ...session, prompts: sessionPrompts, gateDecisions: sessionGates });
-});
+  })
 
-// GET /api/sessions/:id/stream
-app.get("/:id/stream", (c) => {
+  // GET /api/sessions/:id/stream
+  .get("/:id/stream", (c) => {
   const id = c.req.param("id");
 
   return streamSSE(c, async (stream) => {
@@ -166,17 +169,17 @@ app.get("/:id/stream", (c) => {
       return;
     }
 
-    // Reconnect after a gate fired — find the pending gate and wait for resolution
+    // Reconnect after a gate fired — find the most recent gate for this session.
+    // We don't filter by resolvedAt here: if the client close+reopened after
+    // already POSTing a choice, resolvedAt is set but handleGate/pollGate
+    // will still detect gate.chosen and drive resumeLoop immediately.
     if (session.status === "gating") {
       const [gate] = orm
         .select()
         .from(gateDecisions)
-        .where(
-          and(
-            eq(gateDecisions.sessionId, id),
-            isNull(gateDecisions.resolvedAt)
-          )
-        )
+        .where(eq(gateDecisions.sessionId, id))
+        .orderBy(desc(gateDecisions.createdAt))
+        .limit(1)
         .all();
 
       if (!gate) {
@@ -207,6 +210,6 @@ app.get("/:id/stream", (c) => {
       }
     }
   });
-});
+  });
 
-export default app;
+export default routes;

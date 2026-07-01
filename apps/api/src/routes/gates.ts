@@ -8,7 +8,7 @@ const app = new Hono();
 // POST /api/gates/:id/respond
 // Resolves a pending gate decision. The SSE stream polling in
 // sessions/:id/stream detects the resolved_at change and resumes automatically.
-app.post("/:id/respond", async (c) => {
+const routes = app.post("/:id/respond", async (c) => {
   const id = c.req.param("id");
   const body = await c.req.json<{ choice?: string }>();
 
@@ -34,4 +34,4 @@ app.post("/:id/respond", async (c) => {
   return c.json({ ok: true });
 });
 
-export default app;
+export default routes;
