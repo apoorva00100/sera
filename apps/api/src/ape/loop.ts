@@ -8,6 +8,7 @@ import { type Subtask, decompose } from "./decompose";
 import { generateCandidates } from "./generate";
 import { scoreCandidates } from "./score";
 import { executePrompt } from "./execute";
+import { critiqueOutput } from "./critique";
 import { shouldGate } from "./gate";
 
 // Serialized between gate pause and resume — stored in sessions.checkpoint
@@ -110,13 +111,42 @@ async function* processSubtasksFrom(
 
     const output = await executePrompt(scored[0].candidate);
     yield { type: "output", subtask: i, text: output };
-    outputs.push(output);
 
-    orm
-      .update(prompts)
-      .set({ chosen: 1, output })
-      .where(eq(prompts.id, bestId))
-      .run();
+    const critique = await critiqueOutput(subtask.name, output, subtask.successCriteria);
+    yield { type: "critique", subtask: i, score: critique.score, reprompting: critique.score < 7 };
+
+    let finalOutput = output;
+    if (critique.score < 7) {
+      const improvedPrompt =
+        `${scored[0].candidate}\n\n---\nPrevious output:\n${output}\n\n` +
+        `Critique (score ${critique.score}/10):\n${critique.feedback}\n\n` +
+        `Please improve the output addressing the critique.`;
+      const improvedOutput = await executePrompt(improvedPrompt);
+      orm
+        .insert(prompts)
+        .values({
+          id: ulid(),
+          sessionId,
+          subtask: subtask.name,
+          candidate: improvedPrompt,
+          score: null,
+          chosen: 1,
+          output: improvedOutput,
+          note: "reprompt",
+          createdAt: Date.now(),
+        })
+        .run();
+      finalOutput = improvedOutput;
+      yield { type: "output", subtask: i, text: improvedOutput };
+    } else {
+      orm
+        .update(prompts)
+        .set({ chosen: 1, output })
+        .where(eq(prompts.id, bestId))
+        .run();
+    }
+
+    outputs.push(finalOutput);
   }
 
   // All subtasks done
@@ -201,12 +231,41 @@ export async function* resumeLoop(
   const output = await executePrompt(informedCandidate);
   yield { type: "output", subtask: currentIndex, text: output };
 
-  outputs.push(output);
-  orm
-    .update(prompts)
-    .set({ chosen: 1, output })
-    .where(eq(prompts.id, bestId))
-    .run();
+  const critique = await critiqueOutput(subtask.name, output, subtask.successCriteria);
+  yield { type: "critique", subtask: currentIndex, score: critique.score, reprompting: critique.score < 7 };
+
+  let finalOutput = output;
+  if (critique.score < 7) {
+    const improvedPrompt =
+      `${informedCandidate}\n\n---\nPrevious output:\n${output}\n\n` +
+      `Critique (score ${critique.score}/10):\n${critique.feedback}\n\n` +
+      `Please improve the output addressing the critique.`;
+    const improvedOutput = await executePrompt(improvedPrompt);
+    orm
+      .insert(prompts)
+      .values({
+        id: ulid(),
+        sessionId,
+        subtask: subtask.name,
+        candidate: improvedPrompt,
+        score: null,
+        chosen: 1,
+        output: improvedOutput,
+        note: "reprompt",
+        createdAt: Date.now(),
+      })
+      .run();
+    finalOutput = improvedOutput;
+    yield { type: "output", subtask: currentIndex, text: improvedOutput };
+  } else {
+    orm
+      .update(prompts)
+      .set({ chosen: 1, output })
+      .where(eq(prompts.id, bestId))
+      .run();
+  }
+
+  outputs.push(finalOutput);
 
   // Hand off to shared inner loop for remaining subtasks (gate re-checks enabled for them)
   yield* processSubtasksFrom(sessionId, subtasks, context, currentIndex + 1, outputs);
