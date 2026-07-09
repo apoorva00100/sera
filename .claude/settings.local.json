@@ -15,7 +15,12 @@
       "Bash(npm run *)",
       "Bash(curl -s http://localhost:3001/)",
       "Read(//tmp/**)",
-      "Bash(kill %1)"
+      "Bash(kill %1)",
+      "Bash(npm install *)",
+      "Bash(npx tsc *)",
+      "Bash(curl -s http://localhost:3001/api/sessions/01KWJ9PW4MRSQBW3QRQMK0BRM8)",
+      "Bash(powershell -Command 'Get-Process -Name node -ErrorAction SilentlyContinue | Where-Object {$_.MainWindowTitle -eq '\\\\'''\\\\''} | Stop-Process -Force')",
+      "Bash(taskkill //F //IM node.exe //T)"
     ]
   }
 }
