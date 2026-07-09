@@ -1,9 +1,13 @@
 import { sqliteTable, text, real, integer } from "drizzle-orm/sqlite-core";
 
+// Re-export Better Auth tables so drizzle-kit includes them in migrations.
+export * from "./auth-schema";
+
 export const sessions = sqliteTable("sessions", {
   id:         text("id").primaryKey(),
   task:       text("task").notNull(),
   projectId:  text("project_id"),
+  userId:     text("user_id"),             // null for anonymous (not-logged-in) tasks
   status:     text("status").notNull().default("pending"),
   output:     text("output"),
   checkpoint: text("checkpoint"),          // serialized loop state

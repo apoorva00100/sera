@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, isNull } from "drizzle-orm";
 import { ulid } from "ulid";
 import type { SSEStreamingApi } from "hono/streaming";
 import type { SessionEvent } from "@ape/types";
@@ -8,6 +8,7 @@ import { orm } from "../db/client";
 import { sessions, prompts, gateDecisions } from "../db/schema";
 import { loadContext } from "../context/loader";
 import { runLoop, resumeLoop } from "../ape/loop";
+import { auth } from "../auth";
 import * as bus from "../bus";
 
 const app = new Hono();
@@ -45,13 +46,29 @@ async function handleGate(
     return;
   }
 
-  for await (const event of resumeLoop(sessionId, gateId, choice)) {
-    await stream.writeSSE({ data: JSON.stringify(event) });
-    if (event.type === "done" || event.type === "error") return;
-    if (event.type === "gate") {
-      await handleGate(sessionId, event.gateId, stream);
-      return;
+  try {
+    for await (const event of resumeLoop(sessionId, gateId, choice)) {
+      await stream.writeSSE({ data: JSON.stringify(event) });
+      if (event.type === "done" || event.type === "error") return;
+      if (event.type === "gate") {
+        await handleGate(sessionId, event.gateId, stream);
+        return;
+      }
     }
+  } catch (err) {
+    // An uncaught throw here (e.g. the model returning non-JSON) would
+    // otherwise kill the SSE response mid-stream, which the browser reads as
+    // a dropped connection and silently reconnects to — replaying the whole
+    // event buffer and duplicating everything rendered so far. Surface it as
+    // a proper error event and fail the session instead.
+    await stream.writeSSE({
+      data: JSON.stringify({ type: "error", message: String(err) } satisfies SessionEvent),
+    });
+    orm
+      .update(sessions)
+      .set({ status: "failed", updatedAt: Date.now() })
+      .where(eq(sessions.id, sessionId))
+      .run();
   }
 }
 
@@ -67,6 +84,10 @@ const routes = app
     return c.json({ error: "task is required" }, 400);
   }
 
+  // Tie the task to the signed-in user (null when anonymous — optional login).
+  const authSession = await auth.api.getSession({ headers: c.req.raw.headers });
+  const userId = authSession?.user?.id ?? null;
+
   const sessionId = ulid();
   const now = Date.now();
 
@@ -76,6 +97,7 @@ const routes = app
       id: sessionId,
       task: body.task,
       projectId: body.projectId ?? null,
+      userId,
       status: "pending",
       output: null,
       checkpoint: null,
@@ -108,13 +130,32 @@ const routes = app
   return c.json({ sessionId }, 201);
   })
 
-  // GET /api/sessions
-  .get("/", (c) => {
+  // GET /api/sessions — recent list, scoped to the caller.
+  // Logged in → your latest tasks; anonymous → anonymous (unowned) tasks.
+  .get("/", async (c) => {
+    const authSession = await auth.api.getSession({ headers: c.req.raw.headers });
+    const userId = authSession?.user?.id ?? null;
     const rows = orm
       .select()
       .from(sessions)
+      .where(userId ? eq(sessions.userId, userId) : isNull(sessions.userId))
       .orderBy(desc(sessions.createdAt))
       .limit(20)
+      .all();
+    return c.json(rows);
+  })
+
+  // GET /api/sessions/history — the signed-in user's full task history.
+  // Returns [] when not logged in.
+  .get("/history", async (c) => {
+    const authSession = await auth.api.getSession({ headers: c.req.raw.headers });
+    const userId = authSession?.user?.id;
+    if (!userId) return c.json([]);
+    const rows = orm
+      .select()
+      .from(sessions)
+      .where(eq(sessions.userId, userId))
+      .orderBy(desc(sessions.createdAt))
       .all();
     return c.json(rows);
   })
