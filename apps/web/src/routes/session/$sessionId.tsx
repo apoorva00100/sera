@@ -67,7 +67,10 @@ function reducer(state: PageState, action: Action): PageState {
         ],
       };
 
-    case "subtask":
+    case "subtask": {
+      // Reconnects replay the whole event buffer from the start — ignore
+      // a subtask we've already recorded instead of pushing a duplicate.
+      if (state.subtasks.some((st) => st.index === action.index)) return state;
       return {
         ...state,
         subtasks: [
@@ -75,6 +78,7 @@ function reducer(state: PageState, action: Action): PageState {
           { index: action.index, text: action.text, candidates: [] },
         ],
       };
+    }
 
     case "prompt":
       return {
@@ -83,10 +87,9 @@ function reducer(state: PageState, action: Action): PageState {
           st.index === action.subtask
             ? {
                 ...st,
-                candidates: [
-                  ...st.candidates,
-                  { num: action.candidate, text: action.text },
-                ],
+                candidates: st.candidates.some((c) => c.num === action.candidate)
+                  ? st.candidates
+                  : [...st.candidates, { num: action.candidate, text: action.text }],
               }
             : st
         ),
@@ -148,9 +151,11 @@ function reducer(state: PageState, action: Action): PageState {
 function FadeIn({
   children,
   className = "",
+  style,
 }: {
   children: React.ReactNode;
   className?: string;
+  style?: React.CSSProperties;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -163,7 +168,7 @@ function FadeIn({
   return (
     <div
       ref={ref}
-      style={{ opacity: 0, transition: "opacity 0.35s ease" }}
+      style={{ opacity: 0, transition: "opacity 0.35s ease", ...style }}
       className={className}
     >
       {children}
@@ -271,69 +276,136 @@ function SessionPage() {
     setTimeout(() => setCopied(false), 2000);
   }
 
+  const status = state.isDone
+    ? { label: "DONE", color: "#5fd68a" }
+    : state.error
+      ? { label: "FAILED", color: "#f0685f" }
+      : state.activeGate
+        ? { label: "GATING", color: "#f5b83d" }
+        : { label: "RUNNING", color: "var(--accent)" };
+
   return (
-    <div className="mx-auto max-w-2xl px-4 py-12">
+    <div className="ape-fade mx-auto max-w-[820px] px-6 pb-24 pt-[46px]">
       {/* Header */}
-      <div className="mb-8 flex items-center gap-3">
-        <Link to="/" className="text-sm text-gray-400 hover:text-gray-900">
+      <div className="mb-[26px] flex items-center gap-3">
+        <Link
+          to="/app"
+          className="text-[13px] font-semibold"
+          style={{ color: "#7a726b" }}
+        >
           ← Back
         </Link>
-        <span className="text-gray-200">|</span>
-        <span className="font-mono text-xs text-gray-400">{sessionId}</span>
+        <span style={{ color: "#3a332e" }}>/</span>
+        <span className="mono text-[12.5px]" style={{ color: "var(--muted)" }}>
+          {sessionId.slice(0, 10)}
+        </span>
+        <span
+          className="ml-auto inline-flex items-center gap-[7px] rounded-full px-[11px] py-[5px] text-[11.5px] font-bold"
+          style={{
+            background: `color-mix(in srgb, ${status.color} 14%, transparent)`,
+            border: `1px solid color-mix(in srgb, ${status.color} 40%, transparent)`,
+            color: `color-mix(in srgb, ${status.color} 65%, white 35%)`,
+          }}
+        >
+          <span
+            className="h-1.5 w-1.5 rounded-full"
+            style={{
+              background: status.color,
+              animation: state.isDone || state.error ? "none" : "ape-pulse 1.6s ease infinite",
+            }}
+          />
+          {status.label}
+        </span>
       </div>
 
       {/* Gate card — full width, above timeline */}
       {state.activeGate && (
-        <FadeIn className="mb-8">
+        <FadeIn className="mb-[26px]">
           <GateCard gate={state.activeGate} onRespond={handleGateRespond} />
         </FadeIn>
       )}
 
       {/* Timeline */}
-      <div className="space-y-5">
+      <div className="flex flex-col gap-[18px]">
         {state.subtasks.map((subtask) => (
-          <FadeIn
-            key={subtask.index}
-            className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
-          >
+          <FadeIn key={subtask.index} className="ape-card p-[22px]">
             {/* Subtask heading */}
-            <div className="mb-4 flex items-center gap-2">
-              <span className="h-2 w-2 shrink-0 rounded-full bg-blue-400" />
-              <span className="font-medium text-gray-800">{subtask.text}</span>
+            <div className="mb-4 flex items-center gap-[11px]">
+              <span
+                className="mono rounded-[7px] px-2 py-[3px] text-[11px] font-semibold"
+                style={{
+                  color: "color-mix(in srgb, var(--accent) 60%, white 40%)",
+                  background: "color-mix(in srgb, var(--accent) 12%, transparent)",
+                  border: "1px solid color-mix(in srgb, var(--accent) 30%, transparent)",
+                }}
+              >
+                {String(subtask.index + 1).padStart(2, "0")}
+              </span>
+              <span className="text-[15px] font-semibold" style={{ color: "var(--body)" }}>
+                {subtask.text}
+              </span>
             </div>
 
             {/* Candidate prompts */}
             {subtask.candidates.length > 0 && (
-              <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              <div
+                className="mb-3.5 grid gap-2.5"
+                style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}
+              >
                 {subtask.candidates.map((c) => {
                   const isChosen = c.num === subtask.chosenNum;
                   return (
                     <FadeIn
                       key={c.num}
-                      className={`rounded-lg border p-3 ${
+                      className="p-[13px]"
+                      style={
                         isChosen
-                          ? "border-green-300 bg-green-50"
-                          : "border-gray-100 bg-gray-50"
-                      }`}
+                          ? {
+                              borderRadius: "12px",
+                              background: "color-mix(in srgb, var(--accent) 12%, var(--surface-2))",
+                              border: "1px solid color-mix(in srgb, var(--accent) 55%, transparent)",
+                              boxShadow: "0 0 22px color-mix(in srgb, var(--accent) 14%, transparent)",
+                            }
+                          : {
+                              borderRadius: "12px",
+                              background: "#0e0a08",
+                              border: "1px solid rgba(255,255,255,0.06)",
+                            }
+                      }
                     >
-                      <div className="mb-2 flex items-center justify-between gap-1">
-                        <span className="text-xs text-gray-400">#{c.num}</span>
-                        <div className="flex items-center gap-1">
+                      <div className="mb-2.5 flex items-center justify-between">
+                        <span className="mono text-[11px]" style={{ color: "var(--muted)" }}>
+                          #{c.num}
+                        </span>
+                        <div className="flex items-center gap-1.5">
                           {c.score !== undefined && (
                             <FadeIn>
-                              <span className="rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-gray-700 shadow-sm ring-1 ring-gray-200">
+                              <span
+                                className="mono rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                                style={{
+                                  color: "#C9C1BA",
+                                  background: "rgba(255,255,255,0.05)",
+                                  border: "1px solid rgba(255,255,255,0.08)",
+                                }}
+                              >
                                 {c.score.toFixed(1)}
                               </span>
                             </FadeIn>
                           )}
                           {isChosen && subtask.output !== undefined && (
-                            <span className="rounded-full bg-green-500 px-1.5 py-0.5 text-xs font-medium text-white">
+                            <span
+                              className="grid h-[17px] w-[17px] place-items-center rounded-full text-[10px] text-white"
+                              style={{ background: "#3f9d5c" }}
+                            >
                               ✓
                             </span>
                           )}
                         </div>
                       </div>
-                      <p className="line-clamp-3 font-mono text-xs leading-relaxed text-gray-600">
+                      <p
+                        className="mono m-0 line-clamp-3 text-[11.5px] leading-[1.5]"
+                        style={{ color: "#948b83" }}
+                      >
                         {c.text}
                       </p>
                     </FadeIn>
@@ -344,8 +416,15 @@ function SessionPage() {
 
             {/* Subtask output */}
             {subtask.output !== undefined && (
-              <FadeIn className="rounded-lg bg-gray-900 px-4 py-3">
-                <p className="font-mono text-xs leading-relaxed text-gray-100 whitespace-pre-wrap">
+              <FadeIn
+                className="px-[15px] py-[13px]"
+                style={{
+                  background: "var(--surface-2)",
+                  border: "1px solid rgba(255,255,255,0.05)",
+                  borderRadius: "11px",
+                }}
+              >
+                <p className="mono m-0 whitespace-pre-wrap text-[12px] leading-[1.55]" style={{ color: "#7dd88f" }}>
                   {subtask.output}
                 </p>
               </FadeIn>
@@ -356,26 +435,42 @@ function SessionPage() {
 
       {/* Empty state while connecting */}
       {state.subtasks.length === 0 && !state.finalOutput && !state.error && (
-        <div className="rounded-xl border border-dashed border-gray-200 py-16 text-center">
-          <p className="text-sm text-gray-400">Connecting to session…</p>
+        <div
+          className="py-16 text-center"
+          style={{ border: "1px dashed var(--border)", borderRadius: "18px" }}
+        >
+          <p className="text-sm" style={{ color: "var(--muted)" }}>
+            Connecting to session…
+          </p>
         </div>
       )}
 
       {/* Final output */}
       {state.finalOutput !== null && (
-        <FadeIn className="mt-8 rounded-xl border-2 border-green-200 bg-green-50 p-6">
-          <div className="mb-3 flex items-center justify-between">
-            <span className="text-sm font-semibold text-green-800">
-              Final Output
+        <FadeIn
+          className="mt-6 p-6"
+          style={{
+            borderRadius: "18px",
+            background:
+              "linear-gradient(180deg, color-mix(in srgb, var(--accent) 10%, transparent), color-mix(in srgb, var(--accent) 3%, transparent))",
+            border: "1px solid color-mix(in srgb, var(--accent) 40%, transparent)",
+          }}
+        >
+          <div className="mb-3.5 flex items-center justify-between">
+            <span
+              className="text-[13px] font-bold uppercase tracking-[0.1em]"
+              style={{ color: "color-mix(in srgb, var(--accent) 55%, white 45%)" }}
+            >
+              Final output
             </span>
             <button
               onClick={handleCopy}
-              className="rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm ring-1 ring-gray-200 hover:bg-gray-50"
+              className="ape-btn-ghost px-[13px] py-1.5 text-xs"
             >
               {copied ? "Copied!" : "Copy"}
             </button>
           </div>
-          <pre className="whitespace-pre-wrap font-mono text-sm leading-relaxed text-gray-800">
+          <pre className="mono m-0 whitespace-pre-wrap text-[12.5px] leading-[1.6]" style={{ color: "#C9C1BA" }}>
             {state.finalOutput}
           </pre>
         </FadeIn>
@@ -383,13 +478,22 @@ function SessionPage() {
 
       {/* Error */}
       {state.error && (
-        <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4">
-          <p className="text-sm text-red-700">{state.error}</p>
+        <div
+          className="mt-6 p-4"
+          style={{
+            borderRadius: "14px",
+            background: "rgba(240,104,95,0.08)",
+            border: "1px solid rgba(240,104,95,0.35)",
+          }}
+        >
+          <p className="text-sm" style={{ color: "#f0685f" }}>
+            {state.error}
+          </p>
         </div>
       )}
 
       {/* Prompt log */}
-      <div className="mt-10">
+      <div className="mt-6">
         <PromptLog sessionId={sessionId} isDone={state.isDone} />
       </div>
     </div>

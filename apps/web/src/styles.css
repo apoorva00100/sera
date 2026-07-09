@@ -1,1 +1,140 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 @import "tailwindcss";
+
+/* ── APE dark theme tokens ──────────────────────────────────────────────────
+   Accent is a CSS var so it can be retuned in one place. All accent gradients
+   / glows derive from it via color-mix. */
+:root {
+  --accent: #F62681;
+  --bg: #0b0807;
+  --surface: #16110f;
+  --surface-2: #0a0605;
+  --border: rgba(255, 255, 255, 0.07);
+  --border-strong: rgba(255, 255, 255, 0.12);
+  --text: #9C948D;
+  --heading: #F4F1EE;
+  --body: #E9E4DF;
+  --muted: #6A625B;
+  --muted-2: #8B837C;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+::selection { background: color-mix(in srgb, var(--accent) 40%, transparent); color: #fff; }
+
+.font-mono, .mono { font-family: 'JetBrains Mono', monospace; }
+
+textarea::placeholder, input::placeholder { color: #5c554e; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: #241c18; border-radius: 999px; border: 2px solid var(--bg); }
+::-webkit-scrollbar-track { background: transparent; }
+
+@keyframes ape-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes ape-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+@keyframes ape-ring { 0% { transform: translate(-50%,-50%) scale(1); opacity: 0.5; } 100% { transform: translate(-50%,-50%) scale(1.9); opacity: 0; } }
+@keyframes ape-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+@keyframes ape-dash { to { stroke-dashoffset: -24; } }
+
+.ape-fade { animation: ape-fade 0.4s ease; }
+
+/* ── Reusable components ─────────────────────────────────────────────────── */
+
+.ape-navlink {
+  cursor: pointer;
+  padding: 7px 12px;
+  border-radius: 9px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.ape-navlink:hover { background: rgba(255, 255, 255, 0.05); color: var(--heading); }
+
+/* Accent gradient button (primary CTA) */
+.ape-btn {
+  cursor: pointer;
+  border: none;
+  color: #fff;
+  font-weight: 700;
+  border-radius: 11px;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--accent) 92%, white 10%),
+    color-mix(in srgb, var(--accent) 80%, black 18%));
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 38%, transparent);
+  transition: filter 0.15s ease, opacity 0.15s ease;
+}
+.ape-btn:hover { filter: brightness(1.08); }
+.ape-btn:disabled { cursor: not-allowed; opacity: 0.45; filter: none; }
+
+/* Ghost / secondary button */
+.ape-btn-ghost {
+  cursor: pointer;
+  color: var(--body);
+  font-weight: 600;
+  border-radius: 11px;
+  background: rgba(20, 15, 13, 0.7);
+  border: 1px solid var(--border-strong);
+  transition: border-color 0.15s ease;
+}
+.ape-btn-ghost:hover { border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
+.ape-btn-ghost:disabled { cursor: not-allowed; opacity: 0.5; }
+
+/* Surface card */
+.ape-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+.ape-card-i {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.ape-card-i:hover {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+  background: #1a1512;
+}
+
+/* Text input */
+.ape-input {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  padding: 13px 15px;
+  font-size: 14px;
+  color: var(--body);
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+.ape-input:focus { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+.ape-input:disabled { background: var(--surface-2); color: var(--muted); }
+
+/* Small mono pill */
+.ape-pill-mono {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  padding: 5px 9px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 7px;
+}
+
+/* Uppercase section label */
+.ape-section-label {
+  color: var(--muted-2);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}

@@ -38,101 +38,96 @@ export function PromptLog({ sessionId, isDone }: Props) {
   }
 
   return (
-    <div className="rounded-xl border border-gray-200">
+    <div
+      style={{
+        background: "var(--surface)",
+        border: "1px solid var(--border)",
+        borderRadius: "16px",
+        overflow: "hidden",
+      }}
+    >
       <button
         onClick={() => setIsOpen((v) => !v)}
-        className="flex w-full items-center justify-between px-5 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+        className="flex w-full cursor-pointer items-center justify-between px-[18px] py-[15px]"
+        style={{ background: "none", border: "none" }}
       >
-        <span>Prompt Log</span>
-        <span className="text-xs text-gray-400">{isOpen ? "▲" : "▼"}</span>
+        <span className="text-sm font-semibold" style={{ color: "var(--body)" }}>
+          Prompt log
+        </span>
+        <span className="text-xs" style={{ color: "var(--muted)" }}>
+          {isOpen ? "▲" : "▼"}
+        </span>
       </button>
 
       {isOpen && (
-        <div className="border-t border-gray-200">
+        <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
           {isLoading ? (
-            <p className="px-5 py-4 text-sm text-gray-400">Loading…</p>
+            <p className="px-[18px] py-4 text-sm" style={{ color: "var(--muted)" }}>
+              Loading…
+            </p>
           ) : prompts.length === 0 ? (
-            <p className="px-5 py-4 text-sm text-gray-400">No prompts recorded yet.</p>
+            <p className="px-[18px] py-4 text-sm" style={{ color: "var(--muted)" }}>
+              No prompts recorded yet.
+            </p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="bg-gray-50 text-gray-500">
-                    <th className="w-6 px-3 py-2" />
-                    <th className="px-4 py-2 font-medium">Candidate (truncated)</th>
-                    <th className="px-4 py-2 font-medium">Score</th>
-                    <th className="px-4 py-2 font-medium">Chosen</th>
-                    <th className="px-4 py-2 font-medium">Output (truncated)</th>
-                    <th className="px-4 py-2 font-medium">Note</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {subtaskOrder.map((subtaskName, si) => {
-                    const rows = grouped.get(subtaskName)!;
-                    return (
-                      <Fragment key={subtaskName}>
-                        {/* Subtask group header */}
-                        <tr className="bg-gray-50/80">
-                          <td
-                            colSpan={6}
-                            className="px-4 py-1.5 text-xs font-medium text-gray-500"
-                          >
-                            {si + 1}. {subtaskName}
-                          </td>
-                        </tr>
-
-                        {/* Candidate rows */}
-                        {rows.map((p) => {
-                          const isReprompt = p.note === "reprompt";
-                          return (
-                            <tr
-                              key={p.id}
-                              className={
-                                isReprompt
-                                  ? "bg-amber-50"
-                                  : p.chosen
-                                    ? "bg-green-50"
-                                    : ""
-                              }
-                            >
-                              {/* Indent indicator */}
-                              <td className="px-3 py-2 text-center text-amber-500">
-                                {isReprompt ? "↺" : ""}
-                              </td>
-                              <td className="max-w-[12rem] px-4 py-2">
-                                <span className="line-clamp-2 font-mono text-gray-700">
-                                  {p.candidate}
-                                </span>
-                              </td>
-                              <td className="px-4 py-2 tabular-nums text-gray-600">
-                                {p.score !== null && p.score !== undefined
-                                  ? Number(p.score).toFixed(2)
-                                  : "—"}
-                              </td>
-                              <td className="px-4 py-2 text-center text-green-600">
-                                {p.chosen ? "✓" : ""}
-                              </td>
-                              <td className="max-w-[16rem] px-4 py-2">
-                                <span className="line-clamp-2 font-mono text-gray-700">
-                                  {p.output ?? "—"}
-                                </span>
-                              </td>
-                              <td className="px-4 py-2">
-                                {isReprompt && (
-                                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
-                                    ↺ reprompt
-                                  </span>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </Fragment>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            subtaskOrder.map((subtaskName, si) => (
+              <Fragment key={subtaskName}>
+                <div
+                  className="mono px-[18px] py-[9px] text-[11px]"
+                  style={{
+                    background: "rgba(255,255,255,0.02)",
+                    color: "#7a726b",
+                    borderBottom: "1px solid rgba(255,255,255,0.04)",
+                  }}
+                >
+                  {String(si + 1).padStart(2, "0")} · {subtaskName}
+                </div>
+                {grouped.get(subtaskName)!.map((p) => {
+                  const isReprompt = p.note === "reprompt";
+                  return (
+                    <div
+                      key={p.id}
+                      className="flex items-center gap-2.5 px-[18px] py-2.5"
+                      style={{
+                        borderBottom: "1px solid rgba(255,255,255,0.04)",
+                        background: isReprompt
+                          ? "rgba(245,184,61,0.06)"
+                          : p.chosen
+                            ? "color-mix(in srgb, var(--accent) 8%, transparent)"
+                            : "transparent",
+                      }}
+                    >
+                      <span
+                        className="w-[18px] shrink-0 text-xs"
+                        style={{ color: "color-mix(in srgb, var(--accent) 60%, white 40%)" }}
+                      >
+                        {isReprompt ? "↺" : ""}
+                      </span>
+                      <span
+                        className="mono flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[11.5px]"
+                        style={{ color: "#948b83" }}
+                      >
+                        {p.candidate}
+                      </span>
+                      <span
+                        className="mono w-11 shrink-0 text-right text-[11.5px]"
+                        style={{ color: "var(--muted)" }}
+                      >
+                        {p.score !== null && p.score !== undefined
+                          ? Number(p.score).toFixed(2)
+                          : "—"}
+                      </span>
+                      <span
+                        className="w-[26px] shrink-0 text-center text-xs"
+                        style={{ color: "#7dd88f" }}
+                      >
+                        {p.chosen ? "✓" : ""}
+                      </span>
+                    </div>
+                  );
+                })}
+              </Fragment>
+            ))
           )}
         </div>
       )}
