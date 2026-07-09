@@ -1,4 +1,4 @@
-import { client, MODEL, MAX_TOKENS } from "./anthropic";
+import { client, MODEL, MAX_TOKENS, stripJsonFences } from "./anthropic";
 
 export interface CritiqueResult {
   score: number;
@@ -30,7 +30,7 @@ export async function critiqueOutput(
 
   let parsed: unknown;
   try {
-    parsed = JSON.parse(text);
+    parsed = JSON.parse(stripJsonFences(text));
   } catch {
     throw new Error(`critiqueOutput: invalid JSON from model:\n${text}`);
   }

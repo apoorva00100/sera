@@ -1,4 +1,4 @@
-import { client, MODEL, MAX_TOKENS } from "./anthropic";
+import { client, MODEL, MAX_TOKENS, stripJsonFences } from "./anthropic";
 
 export interface ScoredCandidate {
   candidate: string;
@@ -34,7 +34,7 @@ export async function scoreCandidates(
 
   let parsed: unknown;
   try {
-    parsed = JSON.parse(text);
+    parsed = JSON.parse(stripJsonFences(text));
   } catch {
     throw new Error(`scoreCandidates: invalid JSON from model:\n${text}`);
   }

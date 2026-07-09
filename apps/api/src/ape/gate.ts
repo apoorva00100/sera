@@ -1,4 +1,4 @@
-import { client, MODEL, MAX_TOKENS } from "./anthropic";
+import { client, MODEL, MAX_TOKENS, stripJsonFences } from "./anthropic";
 
 export interface GateResult {
   gate: boolean;
@@ -32,7 +32,7 @@ export async function shouldGate(
 
   let parsed: unknown;
   try {
-    parsed = JSON.parse(text);
+    parsed = JSON.parse(stripJsonFences(text));
   } catch {
     throw new Error(`shouldGate: invalid JSON from model:\n${text}`);
   }

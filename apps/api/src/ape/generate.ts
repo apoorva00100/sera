@@ -1,4 +1,4 @@
-import { client, MODEL, MAX_TOKENS } from "./anthropic";
+import { client, MODEL, MAX_TOKENS, stripJsonFences } from "./anthropic";
 
 export async function generateCandidates(subtask: string, context: string): Promise<string[]> {
   const msg = await client.messages.create(
@@ -21,7 +21,7 @@ export async function generateCandidates(subtask: string, context: string): Prom
 
   let parsed: unknown;
   try {
-    parsed = JSON.parse(text);
+    parsed = JSON.parse(stripJsonFences(text));
   } catch {
     throw new Error(`generateCandidates: invalid JSON from model:\n${text}`);
   }

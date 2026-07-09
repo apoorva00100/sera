@@ -1,4 +1,4 @@
-import { client, MODEL, MAX_TOKENS } from "./anthropic";
+import { client, MODEL, MAX_TOKENS, stripJsonFences } from "./anthropic";
 
 export interface Subtask {
   name: string;
@@ -26,7 +26,7 @@ export async function decompose(task: string, context: string): Promise<Subtask[
 
   let parsed: unknown;
   try {
-    parsed = JSON.parse(text);
+    parsed = JSON.parse(stripJsonFences(text));
   } catch {
     throw new Error(`decompose: invalid JSON from model:\n${text}`);
   }
