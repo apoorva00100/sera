@@ -7,11 +7,13 @@ import sessionsRoutes from "./routes/sessions";
 import gatesRoutes from "./routes/gates";
 import contextRoutes from "./routes/context";
 
+const webOrigin = process.env.WEB_ORIGIN || "http://localhost:5173";
+
 const app = new Hono()
   .use(
     "*",
     cors({
-      origin: "http://localhost:5173",
+      origin: webOrigin,
       allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
       allowHeaders: ["Content-Type"],
       credentials: true, // required so the Better Auth session cookie is sent
@@ -28,6 +30,8 @@ const app = new Hono()
 
 export type AppType = typeof app;
 
-serve({ fetch: app.fetch, port: 3001 }, (info) => {
+const port = Number(process.env.PORT) || 3001;
+
+serve({ fetch: app.fetch, port }, (info) => {
   console.log(`API listening on http://localhost:${info.port}`);
 });

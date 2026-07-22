@@ -1,8 +1,9 @@
 import { createAuthClient } from "better-auth/react";
+import { API_URL } from "./config";
 
 // Points at the API server; the client calls its /api/auth/* endpoints.
 export const authClient = createAuthClient({
-  baseURL: "http://localhost:3001",
+  baseURL: API_URL,
 });
 
 export const { signIn, signUp, signOut, useSession } = authClient;

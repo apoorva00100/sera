@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { client } from "../../lib/api";
+import { API_URL } from "../../lib/config";
 
 export const Route = createFileRoute("/context/")({
   component: ContextPage,
@@ -44,7 +45,7 @@ function ContextPage() {
   });
 
   async function handleOpenEditor() {
-    await fetch("http://localhost:3001/api/context/open-editor");
+    await fetch(`${API_URL}/api/context/open-editor`);
   }
 
   const prefs =

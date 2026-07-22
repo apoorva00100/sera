@@ -3,6 +3,7 @@ import { useEffect, useRef, useReducer, useState } from "react";
 import type { SessionEvent } from "@ape/types";
 import { GateCard } from "../../components/GateCard";
 import { PromptLog } from "../../components/PromptLog";
+import { API_URL } from "../../lib/config";
 
 export const Route = createFileRoute("/session/$sessionId")({
   component: SessionPage,
@@ -205,9 +206,7 @@ function SessionPage() {
 
   function openStream(sid: string) {
     esRef.current?.close();
-    const es = new EventSource(
-      `http://localhost:3001/api/sessions/${sid}/stream`
-    );
+    const es = new EventSource(`${API_URL}/api/sessions/${sid}/stream`);
     esRef.current = es;
 
     es.onmessage = (e: MessageEvent) => {
@@ -242,7 +241,7 @@ function SessionPage() {
     if (!state.isDone || state.gateHistory.length === 0) return;
     void Promise.all(
       state.gateHistory.map(({ question, chosenOption }) =>
-        fetch("http://localhost:3001/api/context/preferences", {
+        fetch(`${API_URL}/api/context/preferences`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ key: deriveKey(question), value: chosenOption }),
@@ -258,7 +257,7 @@ function SessionPage() {
     esRef.current?.close();
     esRef.current = null;
     try {
-      await fetch(`http://localhost:3001/api/gates/${gate.gateId}/respond`, {
+      await fetch(`${API_URL}/api/gates/${gate.gateId}/respond`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ choice }),

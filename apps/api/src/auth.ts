@@ -34,7 +34,7 @@ export const auth = betterAuth({
   }),
   emailAndPassword: { enabled: true },
   socialProviders,
-  trustedOrigins: ["http://localhost:5173"],
+  trustedOrigins: [process.env.WEB_ORIGIN || "http://localhost:5173"],
 });
 
 // Which social providers are live — the web UI reads this to show/hide the
